@@ -4,10 +4,10 @@ from django.db import models
 
 class Address(models.Model):
     user = models.ForeignKey(User, related_name='addresses', null=True, on_delete=models.CASCADE)
-    street = models.CharField(max_length=300)
-    city = models.CharField(max_length=300)
-    postcode = models.CharField(max_length=300)
-    country = models.CharField(max_length=300)
+    street = models.CharField(max_length=100)
+    city = models.CharField(max_length=50)
+    postcode = models.CharField(max_length=50)
+    country = models.CharField(max_length=50)
 
     class Meta:
         unique_together = ["user", "street", "city", "country"]
