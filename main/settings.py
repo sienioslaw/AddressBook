@@ -38,6 +38,7 @@ INSTALLED_APPS = [
     'django.contrib.messages',
     'django.contrib.staticfiles',
     'django_extensions',
+    'django_filters',
     'rest_framework',
     'rest_framework.authtoken',
     'address_book'
@@ -85,7 +86,7 @@ DATABASES = {
         'PASSWORD': 'postgres',
         'HOST': 'db',
         'PORT': 5432,
-
+        "ATOMIC_REQUESTS": True,
     }
 }
 
@@ -109,6 +110,7 @@ AUTH_PASSWORD_VALIDATORS = [
 
 REST_FRAMEWORK = {
     'DEFAULT_PAGINATION_CLASS': 'rest_framework.pagination.PageNumberPagination',
+    'DEFAULT_FILTER_BACKENDS': ['django_filters.rest_framework.DjangoFilterBackend'],
     'PAGE_SIZE': 10,
     'DEFAULT_AUTHENTICATION_CLASSES': [
         'rest_framework.authentication.BasicAuthentication',
