@@ -73,6 +73,11 @@ class AddressViewSet(viewsets.ModelViewSet):
 
     @action(detail=False, methods=['DELETE'], name='Delete multiple')
     def delete_multiple(self, request, *args, **kwargs):
+        """
+        ?ids=1,2,3,4
+
+        """
+
         ids = self.request.query_params.get('ids', None)
         if ids:
             # Convert parameter string to list of integers
