@@ -1,8 +1,10 @@
 from django.contrib.auth import get_user_model, logout
 from django.core.exceptions import ImproperlyConfigured
+from rest_framework.authtoken.models import Token
 from rest_framework import viewsets, status
 from rest_framework.decorators import action
 from rest_framework.permissions import AllowAny, IsAuthenticated
+from rest_framework.authentication import TokenAuthentication
 from rest_framework.response import Response
 
 from . import serializers
@@ -25,14 +27,16 @@ class AuthViewSet(viewsets.GenericViewSet):
         serializer.is_valid(raise_exception=True)
         user = get_and_authenticate_user(**serializer.validated_data)
         # if token already exist then remove before re-creating
-        if user.auth_token:
+        is_tokened = Token.objects.filter(user=user).first()
+        if is_tokened:
             user.auth_token.delete()
         data = serializers.AuthUserSerializer(user).data
         return Response(data=data, status=status.HTTP_200_OK)
 
-    @action(methods=['POST', ], detail=False, permission_classes=[IsAuthenticated, ])
+    @action(methods=['POST', ], detail=False, permission_classes=(IsAuthenticated, ))
     def logout(self, request):
         logout(request)
+        Token.objects.filter(key=request.auth.key).delete()
         data = {'success': 'Sucessfully logged out'}
         return Response(data=data, status=status.HTTP_200_OK)
 
