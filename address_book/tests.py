@@ -68,7 +68,28 @@ class AddressAPITestCase(TestCase):
     # User is able to create a new address
     # User will not be able to add a duplicated address to their account
     def testUserAbilityToCreateNewAdressEndpoint(self):
-        pass
+        self.authenticate_client(self.username, self.password)
+
+        data = {
+            "street": '133-137 Fetter Ln',
+            "city": 'London',
+            "postcode": 'EC4A 2BB',
+            "country": 'United Kingdom'
+        }
+        # user should not have addresses before adding through API
+        self.assertEqual(self.user.addresses.count(), 0)
+
+        response = self.client.post("/api/addresses", data=data, format="json")
+        self.assertEqual(response.status_code, 201)
+        self.assertEqual(self.user.addresses.count(), 1)
+
+        # now lets call endpoint with the same params to make sure it that we wont end up with duplicate
+        response = self.client.post("/api/addresses", data=data, format="json")
+        self.assertEqual(response.status_code, 400)
+        self.assertEqual(response.data, {'error': 'User already have this address'})
+        
+        self.assertEqual(self.user.addresses.count(), 1)
+        self.assertEqual(Address.objects.all().count(), 1)
 
     # User is able to retrieve all their postal addresses
     def testUserAbilityToRetrieveAdressesEndpoint(self):
@@ -91,16 +112,114 @@ class AddressAPITestCase(TestCase):
 
     # User is able to filter retrieved addresses using request parameters
     def testUserAbilityToRetrieveFilteredAddressesEndpoint(self):
-        pass
+        # create non-random sample data for sake of testing    	
+        data = [{
+            "user": self.user,
+            "street": 'Rope street',
+            "city": 'London',
+            "postcode": 'SE16 7FJ',
+            "country": 'United Kingdom'
+        }, {
+            "user": self.user,
+            "street": '133-137 Fetter Ln',
+            "city": 'London',
+            "postcode": 'EC4A 2BB',
+            "country": 'United Kingdom'
+        }, {
+            "user": self.user,
+            "street": 'Dluga',
+            "city": 'Gdansk',
+            "postcode": '111-93',
+            "country": 'Poland'
+        }]
+        for entry in data:
+        	Address.objects.create(**entry)
+
+        self.authenticate_client(self.username, self.password)
+
+        # example filter by city
+        response = self.client.get("/api/addresses?city=Gdansk", format="json")
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(1, response.data['count'])
+        response = self.client.get("/api/addresses?city=London", format="json")
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(2, response.data['count'])
 
     # User is able to update existing addresses
     def testUserAbilityToUpdateAddressEndpoint(self):
-        pass
+        self.authenticate_client(self.username, self.password)
+        data = {
+            "user": self.user,
+            "street": 'Rope street',
+            "city": 'London',
+            "postcode": 'SE16 7FJ',
+            "country": 'United Kingdom'
+        }
+        address = Address.objects.create(**data)
+
+        new_data = data.copy()
+        del new_data['user']
+        new_data['city'] = 'Manchester'
+
+        url = "/api/addresses/%s" % address.id
+        response = self.client.put(url, data=new_data, format="json")
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(self.user.addresses.count(), 1)
+        self.assertEqual(self.user.addresses.all()[0].city, new_data['city'])
 
     # User is able to delete one
     def testUserAbilityToDeleteAddressEndpoint(self):
-        pass
+        self.authenticate_client(self.username, self.password)
+        data = {
+            "user": self.user,
+            "street": 'Rope street',
+            "city": 'London',
+            "postcode": 'SE16 7FJ',
+            "country": 'United Kingdom'
+        }
+        address = Address.objects.create(**data)
+
+        # make sure that user got address stored
+        self.assertEqual(self.user.addresses.count(), 1)
+
+        url = "/api/addresses/%s" % address.id
+        response = self.client.delete(url, format="json")
+        self.assertEqual(response.status_code, 204)
+        self.assertEqual(self.user.addresses.count(), 0)
 
     # User is able to delete multiple addresses
     def testUserAbilityToDeleteMultipleAddressEndpoint(self):
-        pass
+        # create non-random sample data for sake of testing    	
+        data = [{
+            "user": self.user,
+            "street": 'Rope street',
+            "city": 'London',
+            "postcode": 'SE16 7FJ',
+            "country": 'United Kingdom'
+        }, {
+            "user": self.user,
+            "street": '133-137 Fetter Ln',
+            "city": 'London',
+            "postcode": 'EC4A 2BB',
+            "country": 'United Kingdom'
+        }, {
+            "user": self.user,
+            "street": 'Dluga',
+            "city": 'Gdansk',
+            "postcode": '111-93',
+            "country": 'Poland'
+        }]
+        ids = []
+        for entry in data:
+        	entry = Address.objects.create(**entry)
+        	ids.append(entry.id)
+
+        self.authenticate_client(self.username, self.password)
+
+        self.assertEqual(3, self.user.addresses.count())
+
+        # for sake of test we will send only 2 ids
+        ids.pop()
+        url = "/api/addresses/delete_multiple?ids=%s" % ','.join([str(x) for x in ids])
+        response = self.client.delete(url, format="json")
+        self.assertEqual(1, self.user.addresses.count())

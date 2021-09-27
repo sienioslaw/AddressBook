@@ -32,3 +32,4 @@ class AddressSerializer(serializers.HyperlinkedModelSerializer):
     class Meta:
         model = Address
         fields = ['id', 'street', 'city', 'postcode', 'country']
+        read_only_fields = ('user',)

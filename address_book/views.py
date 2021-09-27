@@ -1,5 +1,6 @@
 from django.contrib.auth import get_user_model, logout
 from django.core.exceptions import ImproperlyConfigured
+from django.db import IntegrityError
 from rest_framework.authtoken.models import Token
 from rest_framework import viewsets, status
 from rest_framework.decorators import action
@@ -54,7 +55,33 @@ class AddressViewSet(viewsets.ModelViewSet):
     queryset = Address.objects.all()
     serializer_class = serializers.AddressSerializer
     permission_classes = [IsAuthenticated]
+    filter_fields = ["street", "city", "postcode", "country"]
 
     def get_queryset(self):
         query_set = self.queryset.filter(user=self.request.user)
         return query_set
+
+    def create(self, request, *args, **kwargs):
+        try:
+            return super().create(request, *args, **kwargs)
+        except IntegrityError as exc:
+            content = {'error': 'User already have this address'}
+            return Response(content, status=status.HTTP_400_BAD_REQUEST)
+
+    def perform_create(self, serializer):
+        serializer.save(user=self.request.user)
+
+    @action(detail=False, methods=['DELETE'], name='Delete multiple')
+    def delete_multiple(self, request, *args, **kwargs):
+        ids = self.request.query_params.get('ids', None)
+        if ids:
+            # Convert parameter string to list of integers
+            ids = [ int(x) for x in ids.split(',') ]
+            query_set = self.queryset.filter(user=self.request.user, pk__in=ids)
+        else:
+            query_set = self.queryset.filter(user=self.request.user)
+
+        for entry in query_set:
+            entry.delete()
+
+        return Response({'success': 'deleted entries: %s' % ids}, status=status.HTTP_204_NO_CONTENT)
